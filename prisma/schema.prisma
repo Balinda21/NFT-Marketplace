@@ -1,0 +1,429 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ======= ENUMS =======
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum LoginMethod {
+  GOOGLE
+  PASSWORD
+}
+
+enum NetworkType {
+  ERC20
+  TRC20
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  LOAN
+  LOAN_REPAYMENT
+  ORDER_PAYMENT
+  REFERRAL_BONUS
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum OrderType {
+  AI_QUANTIFICATION
+  OPTION
+  CONTRACT
+}
+
+enum OrderDirection {
+  UP
+  DOWN
+}
+
+enum OrderStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum LoanStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum ChatMessageSenderType {
+  USER
+  ADMIN
+  SYSTEM
+}
+
+enum ChatStatus {
+  OPEN
+  CLOSED
+  WAITING
+}
+
+// ======= USERS & AUTHENTICATION =======
+
+model User {
+  id String @id @default(uuid())
+
+  firstName        String?
+  lastName         String?
+  role             UserRole  @default(CUSTOMER)
+  email            String?   @unique
+  phone            String?   @unique
+  password         String?
+  imageUrl         String?
+  isVerified       Boolean   @default(false)
+  googleId         String?   @unique
+  lastLoginAt      DateTime?
+  accountBalance   Decimal   @default(0) @db.Decimal(18, 8)
+  referralCode     String?   @unique
+  referredByUserId String?
+
+  userSessions      UserSession[]
+  wallets           Wallet[]
+  transactions      Transaction[]
+  orders            Order[]
+  loans             Loan[]
+  referrals         Referral[]    @relation("Referrer")
+  referredBy        Referral?     @relation("Referred")
+  chatMessages      ChatMessage[]
+  chatSessions      ChatSession[] @relation("UserChats")
+  adminChatSessions ChatSession[] @relation("AdminChats")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@index([referralCode])
+  @@index([referredByUserId])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model UserSession {
+  id String @id @default(uuid())
+
+  userId       String
+  accessToken  String   @unique
+  refreshToken String   @unique
+  deviceInfo   String?
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([accessToken])
+  @@index([refreshToken])
+  @@index([expiresAt])
+  @@index([isActive])
+}
+
+// ======= WALLETS =======
+
+model Wallet {
+  id String @id @default(uuid())
+
+  userId    String
+  address   String
+  network   NetworkType
+  currency  String      @default("USDT")
+  isActive  Boolean     @default(true)
+  qrCodeUrl String?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, network, currency])
+  @@index([userId])
+  @@index([address])
+  @@index([network])
+  @@index([isActive])
+}
+
+// ======= TRANSACTIONS =======
+
+model Transaction {
+  id String @id @default(uuid())
+
+  userId          String
+  walletId        String?
+  orderId         String?
+  loanId          String?
+  transactionType TransactionType
+  status          TransactionStatus @default(PENDING)
+  amount          Decimal           @db.Decimal(18, 8)
+  currency        String            @default("USDT")
+  network         NetworkType?
+  walletAddress   String?
+  txHash          String?           @unique
+  fee             Decimal?          @db.Decimal(18, 8)
+  description     String?
+  proofImageUrl   String?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet Wallet? @relation(fields: [walletId], references: [id])
+  order  Order?  @relation(fields: [orderId], references: [id])
+  loan   Loan?   @relation(fields: [loanId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([walletId])
+  @@index([orderId])
+  @@index([loanId])
+  @@index([transactionType])
+  @@index([status])
+  @@index([txHash])
+  @@index([createdAt])
+  @@index([isActive])
+}
+
+// ======= ORDERS =======
+
+model Order {
+  id String @id @default(uuid())
+
+  userId    String
+  orderType OrderType
+  status    OrderStatus @default(PENDING)
+  amount    Decimal     @db.Decimal(18, 8)
+  currency  String      @default("USDT")
+
+  // Trading pair info
+  symbol     String? // e.g., "BTC/USD", "DOT/USD"
+  entryPrice Decimal?        @db.Decimal(18, 8) // Price when order was placed
+  direction  OrderDirection? // UP or DOWN for Option orders
+
+  // Option order fields
+  periodSeconds Int? // Time period in seconds (60, 120, 180, etc.)
+  ror           Decimal? @db.Decimal(5, 2) // Rate of Return percentage
+
+  // Contract order fields
+  leverage       Decimal? @db.Decimal(10, 2) // Leverage multiplier (1X to 500X)
+  buyPrice       Decimal? @db.Decimal(18, 8) // Buy price for contract
+  buyVolume      Decimal? @db.Decimal(18, 8) // Buy volume for contract
+  limitOrder     Boolean  @default(false) // Limit order toggle
+  profitStopLoss Boolean  @default(false) // Profit and stop loss toggle
+
+  // AI Quantification fields
+  term    Int? // Days for AI Quantification
+  limited Boolean @default(false)
+
+  // Order execution
+  startDate       DateTime?
+  endDate         DateTime?
+  profit          Decimal?  @db.Decimal(18, 8)
+  settlementPrice Decimal?  @db.Decimal(18, 8) // Final price for settlement
+  isWon           Boolean? // true if option order won, false if lost
+  description     String?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderType])
+  @@index([status])
+  @@index([symbol])
+  @@index([createdAt])
+  @@index([isActive])
+}
+
+// ======= LOANS =======
+
+model Loan {
+  id String @id @default(uuid())
+
+  userId          String
+  status          LoanStatus @default(PENDING)
+  amount          Decimal    @db.Decimal(18, 8)
+  currency        String     @default("USDT")
+  term            Int // Days
+  interestRate    Decimal    @db.Decimal(5, 2) // Percentage
+  totalInterest   Decimal    @db.Decimal(18, 8)
+  totalAmount     Decimal    @db.Decimal(18, 8) // amount + totalInterest
+  startDate       DateTime?
+  endDate         DateTime?
+  repaidAmount    Decimal    @default(0) @db.Decimal(18, 8)
+  remainingAmount Decimal    @db.Decimal(18, 8)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([isActive])
+}
+
+// ======= REFERRALS =======
+
+model Referral {
+  id String @id @default(uuid())
+
+  referrerId     String
+  referredUserId String  @unique
+  commission     Decimal @default(0) @db.Decimal(18, 8)
+  totalEarnings  Decimal @default(0) @db.Decimal(18, 8)
+  referralLink   String  @unique
+
+  referrer User @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred User @relation("Referred", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([referrerId])
+  @@index([referredUserId])
+  @@index([referralLink])
+  @@index([isActive])
+}
+
+// ======= CHAT =======
+
+model ChatSession {
+  id String @id @default(uuid())
+
+  userId        String
+  adminId       String?
+  status        ChatStatus @default(OPEN)
+  lastMessageAt DateTime?
+
+  user     User          @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+  admin    User?         @relation("AdminChats", fields: [adminId], references: [id])
+  messages ChatMessage[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@index([isActive])
+}
+
+model ChatMessage {
+  id String @id @default(uuid())
+
+  sessionId  String
+  userId     String
+  senderType ChatMessageSenderType
+  message    String
+  isRead     Boolean               @default(false)
+  readAt     DateTime?
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([senderType])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([isActive])
+}
+
+// ======= CONTENT MANAGEMENT =======
+
+model FAQ {
+  id String @id @default(uuid())
+
+  question String
+  answer   String
+  order    Int    @default(0)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+  @@index([isActive])
+}
+
+model AboutUs {
+  id String @id @default(uuid())
+
+  title      String
+  content    String
+  order      Int     @default(0)
+  isExpanded Boolean @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+  @@index([isActive])
+}
+
+// ======= MARKET DATA (Cache) =======
+
+model MarketData {
+  id String @id @default(uuid())
+
+  symbol       String   @unique
+  name         String
+  price        Decimal  @db.Decimal(18, 8)
+  change24h    Decimal  @db.Decimal(5, 2)
+  marketCap    Decimal? @db.Decimal(18, 2)
+  volume24h    Decimal? @db.Decimal(18, 2)
+  priceHistory Json? // Array of prices for sparkline
+  category     String   @default("CRYPTO") // CRYPTO, FUTURES, FOREX, STOCK, ETF
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([symbol])
+  @@index([category])
+  @@index([isActive])
+}
