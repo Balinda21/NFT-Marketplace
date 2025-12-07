@@ -66,6 +66,13 @@ const corsOptions = {
       }
     }
     
+    // Always allow same-origin requests (for Swagger UI on same domain)
+    // This allows Swagger UI to work when hosted on Render/Railway
+    if (origin.includes('onrender.com') || origin.includes('railway.app') || origin.includes('fly.dev')) {
+      callback(null, true);
+      return;
+    }
+    
     // In production, check against allowed origins
     const allowedOrigins = config.frontend_url.split(',').map(url => url.trim());
     
