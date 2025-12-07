@@ -102,15 +102,31 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Swagger documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'NFT Marketplace API Documentation',
-  swaggerOptions: {
-    persistAuthorization: true,
-    docExpansion: 'none',
-  },
-}));
+// Swagger documentation - dynamically set server URL based on request
+app.use('/api-docs', swaggerUi.serve, (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Get the actual host from the request
+  const protocol = req.protocol || 'https';
+  const host = req.get('host') || '';
+  const baseUrl = `${protocol}://${host}`;
+  
+  // Update swagger spec with the actual server URL
+  const swaggerSpecWithServer = {
+    ...swaggerSpec,
+    servers: [{
+      url: baseUrl,
+      description: config.env === 'production' ? 'Production server' : 'Development server',
+    }],
+  };
+  
+  return swaggerUi.setup(swaggerSpecWithServer, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'NFT Marketplace API Documentation',
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+    },
+  })(req, res, next);
+});
 
 // Health check
 app.get('/', (req, res) => {

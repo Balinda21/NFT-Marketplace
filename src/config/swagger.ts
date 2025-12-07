@@ -10,10 +10,17 @@ const options: swaggerJsdoc.Options = {
       description: 'Simple API for NFT marketplace with Google and email/password authentication. Most endpoints require authentication. Use the login/register endpoints to get an access token, then click the Authorize button to enter your token.',
     },
     servers: [
-      {
-        url: `http://localhost:${config.port}`,
-        description: 'Development server',
-      },
+      // In production, use the actual request URL or Render's external URL
+      ...(config.env === 'production' 
+        ? [{
+            url: process.env.RENDER_EXTERNAL_URL || 'https://your-service-name.onrender.com',
+            description: 'Production server',
+          }]
+        : [{
+            url: `http://localhost:${config.port}`,
+            description: 'Development server',
+          }]
+      ),
     ],
     components: {
       securitySchemes: {
