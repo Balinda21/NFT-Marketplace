@@ -120,6 +120,23 @@ app.use('/api-docs', swaggerUi.serve, (req: express.Request, res: express.Respon
   })(req, res, next);
 });
 
+// Serve Swagger JSON with correct server URL
+app.get('/api-docs/swagger.json', (req, res) => {
+  const protocol = req.protocol || (req.get('x-forwarded-proto') || 'https');
+  const host = req.get('host') || req.get('x-forwarded-host') || '';
+  const baseUrl = `${protocol}://${host}`;
+  
+  const swaggerSpecWithServer = {
+    ...swaggerSpec,
+    servers: [{
+      url: baseUrl,
+      description: config.env === 'production' ? 'Production server' : 'Development server',
+    }],
+  };
+  
+  res.json(swaggerSpecWithServer);
+});
+
 // Health check
 app.get('/', (req, res) => {
   return sendResponse(res, httpStatus.OK, 'Welcome to NFT Marketplace Backend API');
