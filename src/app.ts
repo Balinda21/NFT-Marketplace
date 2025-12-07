@@ -49,41 +49,10 @@ app.use(xss());
 // Compression
 app.use(compression());
 
-// CORS - Configure based on environment
+// CORS - Allow all origins (can be restricted later for production)
+// This ensures Swagger UI and all clients can access the API
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // Always allow same-origin requests (for Swagger UI on same domain)
-    // This allows Swagger UI to work when hosted on Render/Railway/Fly.io
-    if (origin.includes('onrender.com') || 
-        origin.includes('railway.app') || 
-        origin.includes('railway.tech') ||
-        origin.includes('fly.dev') ||
-        origin.includes('localhost') || 
-        origin.includes('127.0.0.1')) {
-      callback(null, true);
-      return;
-    }
-    
-    // In production, check against allowed origins from config
-    const allowedOrigins = config.frontend_url.split(',').map(url => url.trim());
-    const isAllowed = allowedOrigins.includes(origin) || 
-                      allowedOrigins.some(url => origin.startsWith(url));
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      // Log for debugging
-      console.log('CORS blocked origin:', origin);
-      console.log('Allowed origins:', allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
