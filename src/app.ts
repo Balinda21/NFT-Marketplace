@@ -52,41 +52,33 @@ app.use(compression());
 // CORS - Configure based on environment
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps, Postman, etc.)
+    // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
     if (!origin) {
       callback(null, true);
       return;
     }
 
-    // In development, allow localhost with any port
-    if (config.env === 'development') {
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        callback(null, true);
-        return;
-      }
-    }
-    
     // Always allow same-origin requests (for Swagger UI on same domain)
-    // This allows Swagger UI to work when hosted on Render/Railway
-    if (origin.includes('onrender.com') || origin.includes('railway.app') || origin.includes('fly.dev')) {
+    // This allows Swagger UI to work when hosted on Render/Railway/Fly.io
+    if (origin.includes('onrender.com') || 
+        origin.includes('railway.app') || 
+        origin.includes('railway.tech') ||
+        origin.includes('fly.dev') ||
+        origin.includes('localhost') || 
+        origin.includes('127.0.0.1')) {
       callback(null, true);
       return;
     }
     
-    // In production, check against allowed origins
+    // In production, check against allowed origins from config
     const allowedOrigins = config.frontend_url.split(',').map(url => url.trim());
-    
-    // Also allow any origin that matches the pattern (for testing)
-    // Remove this in production if you want strict CORS
     const isAllowed = allowedOrigins.includes(origin) || 
-                      allowedOrigins.some(url => origin.startsWith(url)) ||
-                      origin.includes('localhost') || 
-                      origin.includes('127.0.0.1');
+                      allowedOrigins.some(url => origin.startsWith(url));
     
     if (isAllowed) {
       callback(null, true);
     } else {
-      // Log for debugging (remove in production)
+      // Log for debugging
       console.log('CORS blocked origin:', origin);
       console.log('Allowed origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
