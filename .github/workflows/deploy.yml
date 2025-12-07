@@ -1,11 +1,9 @@
 name: Deploy to Render
 
+# DISABLED: Using Render's auto-deploy instead
+# This workflow is kept for reference but won't run
 on:
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
+  workflow_dispatch:  # Only manual triggers, not on push
 
 jobs:
   deploy:
