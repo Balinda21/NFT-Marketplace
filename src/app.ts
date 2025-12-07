@@ -68,9 +68,20 @@ const corsOptions = {
     
     // In production, check against allowed origins
     const allowedOrigins = config.frontend_url.split(',').map(url => url.trim());
-    if (allowedOrigins.includes(origin)) {
+    
+    // Also allow any origin that matches the pattern (for testing)
+    // Remove this in production if you want strict CORS
+    const isAllowed = allowedOrigins.includes(origin) || 
+                      allowedOrigins.some(url => origin.startsWith(url)) ||
+                      origin.includes('localhost') || 
+                      origin.includes('127.0.0.1');
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
+      // Log for debugging (remove in production)
+      console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
