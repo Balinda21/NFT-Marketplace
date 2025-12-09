@@ -86,3 +86,4 @@ export const getUnreadCount = catchAsync(async (req: Request, res: Response) => 
   return sendResponse(res, status.OK, 'Unread count retrieved', { count });
 });
 
+

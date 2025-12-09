@@ -103,3 +103,5 @@ Copy the output and use it as your `JWT_SECRET`
 
 **Your API will be live at:** `https://your-project-name.up.railway.app`
 
+
+

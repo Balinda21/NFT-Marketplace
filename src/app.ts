@@ -16,6 +16,9 @@ import swaggerSpec from './config/swagger';
 
 const app = express();
 
+// Trust proxy - Required for Render and other hosting platforms to get correct protocol
+app.set('trust proxy', true);
+
 if (config.env !== 'test') {
   app.use(morgan.successHandler);
   app.use(morgan.errorHandler);
@@ -66,9 +69,13 @@ app.options('*', cors(corsOptions));
 // Swagger documentation - dynamically set server URL based on request
 app.use('/api-docs', swaggerUi.serve, (req: express.Request, res: express.Response, next: express.NextFunction) => {
   // Get the actual host from the request
-  const protocol = req.protocol || 'https';
-  const host = req.get('host') || '';
-  const baseUrl = `${protocol}://${host}`;
+  // In production behind a proxy (like Render), use x-forwarded-proto
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host') || '';
+  
+  // Ensure protocol is http or https
+  const validProtocol = protocol === 'http' || protocol === 'https' ? protocol : 'https';
+  const baseUrl = `${validProtocol}://${host}`;
   
   // Update swagger spec with the actual server URL
   const swaggerSpecWithServer = {
@@ -91,9 +98,13 @@ app.use('/api-docs', swaggerUi.serve, (req: express.Request, res: express.Respon
 
 // Serve Swagger JSON with correct server URL
 app.get('/api-docs/swagger.json', (req, res) => {
-  const protocol = req.protocol || (req.get('x-forwarded-proto') || 'https');
-  const host = req.get('host') || req.get('x-forwarded-host') || '';
-  const baseUrl = `${protocol}://${host}`;
+  // In production behind a proxy (like Render), use x-forwarded-proto
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host') || '';
+  
+  // Ensure protocol is http or https
+  const validProtocol = protocol === 'http' || protocol === 'https' ? protocol : 'https';
+  const baseUrl = `${validProtocol}://${host}`;
   
   const swaggerSpecWithServer = {
     ...swaggerSpec,

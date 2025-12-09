@@ -41,3 +41,4 @@ export const getLoansSchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).optional().default(50),
 });
 
+
