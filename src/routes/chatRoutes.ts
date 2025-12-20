@@ -217,3 +217,5 @@ router.post('/:sessionId/assign', auth(UserRole.ADMIN), validation(assignAdminSc
  *         description: Chat session closed
  */
 router.post('/:sessionId/close', closeSession);
+
+export default router;
