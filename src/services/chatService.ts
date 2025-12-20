@@ -1,7 +1,6 @@
-import { PrismaClient, ChatMessageSenderType } from '@prisma/client';
+import { PrismaClient, ChatMessageSenderType, UserRole } from '@prisma/client';
 import logger from '@/config/logger';
-
-const prisma = new PrismaClient();
+import prisma from '@/config/prisma';
 
 /**
  * Send a chat message
@@ -15,13 +14,40 @@ export async function sendMessage(
   audioUrl?: string | null
 ) {
   try {
-    // Verify session exists
-    const session = await prisma.chatSession.findUnique({
-      where: { id: sessionId },
+    // Get user role to check admin access
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Build access check: user owns session OR is assigned admin OR is an admin
+    const whereClause: any = {
+      id: sessionId,
+      isActive: true,
+    };
+
+    // If user is admin, they can send messages to any session
+    if (user.role === UserRole.ADMIN) {
+      // Admin can access any session, no additional where conditions needed
+    } else {
+      // Regular users can only send to their own sessions or sessions where they're assigned as admin
+      whereClause.OR = [
+        { userId }, // User is the owner
+        { adminId: userId }, // User is the assigned admin
+      ];
+    }
+
+    // Verify session exists and user has access
+    const session = await prisma.chatSession.findFirst({
+      where: whereClause,
     });
 
     if (!session) {
-      throw new Error('Chat session not found');
+      throw new Error('Chat session not found or access denied');
     }
 
     // Create message

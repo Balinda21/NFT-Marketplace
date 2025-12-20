@@ -88,14 +88,24 @@ export const initializeSocket = (httpServer: HttpServer): SocketServer => {
     // Join user's chat sessions
     socket.on('join-sessions', async () => {
       try {
+        // Build where clause based on user role
+        const whereClause: any = {
+          isActive: true,
+        };
+
+        // If user is admin, they can see all sessions
+        if (userRole === UserRole.ADMIN) {
+          // Admin can access all sessions, no additional where conditions needed
+        } else {
+          // Regular users can only see their own sessions or sessions where they're assigned as admin
+          whereClause.OR = [
+            { userId }, // User is the owner
+            { adminId: userId }, // User is the assigned admin
+          ];
+        }
+
         const sessions = await prisma.chatSession.findMany({
-          where: {
-            OR: [
-              { userId },
-              { adminId: userId },
-            ],
-            isActive: true,
-          },
+          where: whereClause,
           select: {
             id: true,
           },
@@ -117,16 +127,26 @@ export const initializeSocket = (httpServer: HttpServer): SocketServer => {
       try {
         const { sessionId } = data;
 
+        // Build access check: user owns session OR is assigned admin OR is an admin
+        const whereClause: any = {
+          id: sessionId,
+          isActive: true,
+        };
+
+        // If user is admin, they can access any session
+        if (userRole === UserRole.ADMIN) {
+          // Admin can access any session, no additional where conditions needed
+        } else {
+          // Regular users can only access their own sessions or sessions where they're assigned as admin
+          whereClause.OR = [
+            { userId }, // User is the owner
+            { adminId: userId }, // User is the assigned admin
+          ];
+        }
+
         // Verify user has access to this session
         const session = await prisma.chatSession.findFirst({
-          where: {
-            id: sessionId,
-            OR: [
-              { userId },
-              { adminId: userId },
-            ],
-            isActive: true,
-          },
+          where: whereClause,
         });
 
         if (!session) {
