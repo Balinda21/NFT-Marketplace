@@ -149,12 +149,12 @@ export const initializeSocket = (httpServer: HttpServer): SocketServer => {
     });
 
     // Send a message
-    socket.on('send-message', async (data: { sessionId: string; message: string; imageUrl?: string }) => {
+    socket.on('send-message', async (data: { sessionId: string; message?: string; imageUrl?: string; audioUrl?: string }) => {
       try {
-        const { sessionId, message, imageUrl } = data;
+        const { sessionId, message, imageUrl, audioUrl } = data;
 
-        if ((!message || !message.trim()) && !imageUrl) {
-          socket.emit('error', { message: 'Message or image is required' });
+        if ((!message || !message.trim()) && !imageUrl && !audioUrl) {
+          socket.emit('error', { message: 'Message, image, or audio is required' });
           return;
         }
 
@@ -165,7 +165,7 @@ export const initializeSocket = (httpServer: HttpServer): SocketServer => {
             : ChatMessageSenderType.USER;
 
         // Send message via service
-        const chatMessage = await sendMessage(sessionId, userId, message?.trim() || '', senderType, imageUrl);
+        const chatMessage = await sendMessage(sessionId, userId, message?.trim() || '', senderType, imageUrl, audioUrl);
 
         // Emit to all participants in the session
         io!.to(`session:${sessionId}`).emit('new-message', {

@@ -9,7 +9,7 @@ import { ChatMessageSenderType, UserRole } from '@prisma/client';
 
 export const sendChatMessage = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromRequest(req);
-  const { sessionId, message, imageUrl } = req.body;
+  const { sessionId, message, imageUrl, audioUrl } = req.body;
 
   // Get user to determine sender type
   const user = await prisma.user.findUnique({
@@ -26,7 +26,7 @@ export const sendChatMessage = catchAsync(async (req: Request, res: Response) =>
       ? ChatMessageSenderType.ADMIN
       : ChatMessageSenderType.USER;
 
-  const chatMessage = await sendMessage(sessionId, userId, message || '', senderType, imageUrl);
+  const chatMessage = await sendMessage(sessionId, userId, message || '', senderType, imageUrl, audioUrl);
 
   return sendResponse(res, status.CREATED, 'Message sent successfully', chatMessage);
 });

@@ -11,7 +11,8 @@ export async function sendMessage(
   userId: string,
   message: string,
   senderType: ChatMessageSenderType,
-  imageUrl?: string | null
+  imageUrl?: string | null,
+  audioUrl?: string | null
 ) {
   try {
     // Verify session exists
@@ -29,8 +30,9 @@ export async function sendMessage(
         sessionId,
         userId,
         senderType,
-        message: message || '', // Allow empty message if image is present
+        message: message || '', // Allow empty message if image or audio is present
         imageUrl: imageUrl || null,
+        audioUrl: audioUrl || null,
       },
       include: {
         user: {

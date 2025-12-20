@@ -355,6 +355,7 @@ model ChatMessage {
   senderType ChatMessageSenderType
   message    String
   imageUrl   String?  // Optional image URL for image messages
+  audioUrl   String?  // Optional audio/voice note URL for voice messages
   isRead     Boolean               @default(false)
   readAt     DateTime?
 

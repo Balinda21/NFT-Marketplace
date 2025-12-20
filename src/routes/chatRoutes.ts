@@ -91,7 +91,7 @@ router.get('/unread', getUnreadCount);
  * @swagger
  * /api/chat/message:
  *   post:
- *     summary: Send a message (text or image)
+ *     summary: Send a message (text, image, or voice note)
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
@@ -109,15 +109,20 @@ router.get('/unread', getUnreadCount);
  *                 description: Chat session ID
  *               message:
  *                 type: string
- *                 description: Text message (optional if imageUrl is provided)
+ *                 description: Text message (optional if imageUrl or audioUrl is provided)
  *                 maxLength: 5000
  *               imageUrl:
  *                 type: string
  *                 format: uri
- *                 description: Image URL (optional if message is provided)
+ *                 description: Image URL (optional if message or audioUrl is provided)
+ *               audioUrl:
+ *                 type: string
+ *                 format: uri
+ *                 description: Audio/voice note URL (optional if message or imageUrl is provided)
  *             anyOf:
  *               - required: [message]
  *               - required: [imageUrl]
+ *               - required: [audioUrl]
  *     responses:
  *       201:
  *         description: Message sent successfully

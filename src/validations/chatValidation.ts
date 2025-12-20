@@ -12,8 +12,11 @@ export const sendMessageSchema = Joi.object({
   imageUrl: Joi.string().uri().optional().messages({
     'string.uri': 'Invalid image URL format',
   }),
-}).or('message', 'imageUrl').messages({
-  'object.missing': 'Either message or imageUrl is required',
+  audioUrl: Joi.string().uri().optional().messages({
+    'string.uri': 'Invalid audio URL format',
+  }),
+}).or('message', 'imageUrl', 'audioUrl').messages({
+  'object.missing': 'Either message, imageUrl, or audioUrl must be provided',
 });
 
 export const getMessagesSchema = Joi.object({
