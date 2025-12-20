@@ -19,10 +19,17 @@ COPY ./tsconfig.json ./
 # Build the project
 RUN npx tsc && npx tsc-alias
 
-# Create logs directory
-RUN mkdir -p /app/logs && chown -R node:node /app/logs
+# Create logs directory with proper permissions
+RUN mkdir -p /app/logs && chown -R node:node /app/logs && chown -R node:node /app
 
-# Use PORT from environment variable or default to 9090
+# Use PORT from environment variable (Render sets this automatically)
+# Default to 9090 if not set
 ENV PORT=9090
 
+# Switch to non-root user for security
+USER node
+
 EXPOSE 9090
+
+# Start the application
+CMD ["node", "dist/index.js"]
