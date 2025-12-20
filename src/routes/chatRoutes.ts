@@ -91,7 +91,7 @@ router.get('/unread', getUnreadCount);
  * @swagger
  * /api/chat/message:
  *   post:
- *     summary: Send a message
+ *     summary: Send a message (text or image)
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
@@ -103,14 +103,21 @@ router.get('/unread', getUnreadCount);
  *             type: object
  *             required:
  *               - sessionId
- *               - message
  *             properties:
  *               sessionId:
  *                 type: string
+ *                 description: Chat session ID
  *               message:
  *                 type: string
- *                 minLength: 1
+ *                 description: Text message (optional if imageUrl is provided)
  *                 maxLength: 5000
+ *               imageUrl:
+ *                 type: string
+ *                 format: uri
+ *                 description: Image URL (optional if message is provided)
+ *             anyOf:
+ *               - required: [message]
+ *               - required: [imageUrl]
  *     responses:
  *       201:
  *         description: Message sent successfully
