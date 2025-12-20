@@ -17,11 +17,6 @@ export const sendMessageSchema = Joi.object({
 });
 
 export const getMessagesSchema = Joi.object({
-  sessionId: Joi.string().uuid().required().messages({
-    'string.empty': 'Session ID is required',
-    'string.guid': 'Invalid session ID format',
-    'any.required': 'Session ID is required',
-  }),
   page: Joi.number().integer().positive().default(1).messages({
     'number.base': 'Page must be a number',
     'number.positive': 'Page must be positive',

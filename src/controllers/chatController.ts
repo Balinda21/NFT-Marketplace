@@ -205,10 +205,27 @@ export const getAllSessions = catchAsync(async (req: Request, res: Response) => 
 });
 
 export const getMessages = catchAsync(async (req: Request, res: Response) => {
+  const userId = getUserIdFromRequest(req);
   const { sessionId } = req.params;
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 50;
   const skip = (page - 1) * limit;
+
+  // Verify user has access to this session
+  const session = await prisma.chatSession.findFirst({
+    where: {
+      id: sessionId,
+      OR: [
+        { userId }, // User is the owner
+        { adminId: userId }, // User is the assigned admin
+      ],
+      isActive: true,
+    },
+  });
+
+  if (!session) {
+    return sendResponse(res, status.NOT_FOUND, 'Chat session not found or access denied', null);
+  }
 
   const messages = await prisma.chatMessage.findMany({
     where: {
@@ -228,7 +245,7 @@ export const getMessages = catchAsync(async (req: Request, res: Response) => {
       },
     },
     orderBy: {
-      createdAt: 'desc',
+      createdAt: 'asc', // Oldest first for proper chat display
     },
     skip,
     take: limit,
@@ -242,7 +259,7 @@ export const getMessages = catchAsync(async (req: Request, res: Response) => {
   });
 
   return sendResponse(res, status.OK, 'Messages retrieved', {
-    messages: messages.reverse(), // Reverse to show oldest first
+    messages,
     pagination: {
       page,
       limit,
