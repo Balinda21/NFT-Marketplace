@@ -20,16 +20,16 @@ export const sendMessageSchema = Joi.object({
 });
 
 export const getMessagesSchema = Joi.object({
-  page: Joi.number().integer().positive().default(1).messages({
+  page: Joi.number().integer().positive().optional().default(1).messages({
     'number.base': 'Page must be a number',
     'number.positive': 'Page must be positive',
   }),
-  limit: Joi.number().integer().positive().max(100).default(50).messages({
+  limit: Joi.number().integer().positive().max(100).optional().default(50).messages({
     'number.base': 'Limit must be a number',
     'number.positive': 'Limit must be positive',
     'number.max': 'Limit cannot exceed 100',
   }),
-});
+}).options({ convert: true }); // Enable automatic type conversion for query params
 
 export const assignAdminSchema = Joi.object({
   adminId: Joi.string().uuid().required().messages({
