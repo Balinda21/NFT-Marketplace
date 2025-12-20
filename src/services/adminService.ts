@@ -635,4 +635,3 @@ export const getReferralStats = async () => {
     topReferrers: topReferrersWithDetails,
   };
 };
-

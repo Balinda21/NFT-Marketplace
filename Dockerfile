@@ -26,7 +26,3 @@ RUN mkdir -p /app/logs && chown -R node:node /app/logs
 ENV PORT=9090
 
 EXPOSE 9090
-
-# Run migrations and start server
-# Note: DATABASE_URL must be set as environment variable in Render
-CMD ["sh", "-c", "if [ -z \"$DATABASE_URL\" ]; then echo 'ERROR: DATABASE_URL is not set'; exit 1; fi && npx prisma migrate deploy && node dist/index.js"]

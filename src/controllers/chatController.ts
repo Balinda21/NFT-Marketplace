@@ -1,89 +1,334 @@
 import { Request, Response } from 'express';
 import status from 'http-status';
-import {
-  getOrCreateChatSession,
-  getUserChatSessions,
-  getAllChatSessions,
-  getChatMessages,
-  sendMessage,
-  markMessagesAsRead,
-  assignAdminToChat,
-  closeChatSession,
-  getUnreadMessageCount,
-} from '@/services/chatService';
+import { sendMessage } from '@/services/chatService';
 import catchAsync from '@/utils/catchAsync';
 import { sendResponse } from '@/utils/response';
 import { getUserIdFromRequest } from '@/utils/requestUtils';
-import { ChatMessageSenderType, ChatStatus, UserRole } from '@prisma/client';
+import prisma from '@/config/prisma';
+import { ChatMessageSenderType, UserRole } from '@prisma/client';
+
+export const sendChatMessage = catchAsync(async (req: Request, res: Response) => {
+  const userId = getUserIdFromRequest(req);
+  const { sessionId, message, imageUrl } = req.body;
+
+  // Get user to determine sender type
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!user) {
+    return sendResponse(res, status.NOT_FOUND, 'User not found', null);
+  }
+
+  const senderType =
+    user.role === UserRole.ADMIN
+      ? ChatMessageSenderType.ADMIN
+      : ChatMessageSenderType.USER;
+
+  const chatMessage = await sendMessage(sessionId, userId, message || '', senderType, imageUrl);
+
+  return sendResponse(res, status.CREATED, 'Message sent successfully', chatMessage);
+});
 
 export const getOrCreateSession = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromRequest(req);
-  const session = await getOrCreateChatSession(userId);
-  return sendResponse(res, status.OK, 'Chat session retrieved', session);
+
+  let session = await prisma.chatSession.findFirst({
+    where: {
+      userId,
+      status: 'OPEN',
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+      admin: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  if (!session) {
+    session = await prisma.chatSession.create({
+      data: {
+        userId,
+        status: 'OPEN',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            imageUrl: true,
+          },
+        },
+        admin: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            imageUrl: true,
+          },
+        },
+      },
+    });
+  }
+
+  return sendResponse(res, status.OK, 'Session retrieved', session);
 });
 
 export const getUserSessions = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromRequest(req);
-  const sessions = await getUserChatSessions(userId);
-  return sendResponse(res, status.OK, 'Chat sessions retrieved', sessions);
+
+  const sessions = await prisma.chatSession.findMany({
+    where: { userId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+      admin: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+      _count: {
+        select: {
+          messages: {
+            where: {
+              isRead: false,
+              userId: { not: userId },
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      lastMessageAt: 'desc',
+    },
+  });
+
+  return sendResponse(res, status.OK, 'Sessions retrieved', sessions);
 });
 
 export const getAllSessions = catchAsync(async (req: Request, res: Response) => {
-  const statusFilter = req.query.status as ChatStatus | undefined;
-  const sessions = await getAllChatSessions(statusFilter);
-  return sendResponse(res, status.OK, 'All chat sessions retrieved', sessions);
+  const { status: statusFilter } = req.query;
+
+  const where: any = {};
+  if (statusFilter) {
+    where.status = statusFilter;
+  }
+
+  const sessions = await prisma.chatSession.findMany({
+    where,
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+      admin: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+      messages: {
+        take: 1,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              imageUrl: true,
+              role: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          messages: {
+            where: {
+              isRead: false,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      lastMessageAt: 'desc',
+    },
+  });
+
+  return sendResponse(res, status.OK, 'Sessions retrieved', sessions);
 });
 
 export const getMessages = catchAsync(async (req: Request, res: Response) => {
-  const userId = getUserIdFromRequest(req);
   const { sessionId } = req.params;
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 50;
+  const skip = (page - 1) * limit;
 
-  const result = await getChatMessages(sessionId, userId, page, limit);
-  return sendResponse(res, status.OK, 'Messages retrieved', result);
-});
+  const messages = await prisma.chatMessage.findMany({
+    where: {
+      sessionId,
+      isActive: true,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+          role: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    skip,
+    take: limit,
+  });
 
-export const sendChatMessage = catchAsync(async (req: Request, res: Response) => {
-  const userId = getUserIdFromRequest(req);
-  const { sessionId, message } = req.body;
+  const total = await prisma.chatMessage.count({
+    where: {
+      sessionId,
+      isActive: true,
+    },
+  });
 
-  // Determine sender type based on user role
-  const user = req.user;
-  const senderType =
-    user?.role === UserRole.ADMIN
-      ? ChatMessageSenderType.ADMIN
-      : ChatMessageSenderType.USER;
-
-  const chatMessage = await sendMessage(sessionId, userId, message, senderType);
-  return sendResponse(res, status.CREATED, 'Message sent', chatMessage);
+  return sendResponse(res, status.OK, 'Messages retrieved', {
+    messages: messages.reverse(), // Reverse to show oldest first
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
 });
 
 export const markAsRead = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromRequest(req);
   const { sessionId } = req.params;
-  const result = await markMessagesAsRead(sessionId, userId);
-  return sendResponse(res, status.OK, 'Messages marked as read', result);
+
+  await prisma.chatMessage.updateMany({
+    where: {
+      sessionId,
+      userId: { not: userId },
+      isRead: false,
+    },
+    data: {
+      isRead: true,
+      readAt: new Date(),
+    },
+  });
+
+  return sendResponse(res, status.OK, 'Messages marked as read', null);
 });
 
 export const assignAdmin = catchAsync(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const { adminId } = req.body;
-  const session = await assignAdminToChat(sessionId, adminId);
-  return sendResponse(res, status.OK, 'Admin assigned to chat', session);
+
+  const session = await prisma.chatSession.update({
+    where: { id: sessionId },
+    data: { adminId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+      admin: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+    },
+  });
+
+  return sendResponse(res, status.OK, 'Admin assigned', session);
 });
 
 export const closeSession = catchAsync(async (req: Request, res: Response) => {
-  const userId = getUserIdFromRequest(req);
   const { sessionId } = req.params;
-  const result = await closeChatSession(sessionId, userId);
-  return sendResponse(res, status.OK, 'Chat session closed', result);
+
+  const session = await prisma.chatSession.update({
+    where: { id: sessionId },
+    data: { status: 'CLOSED' },
+  });
+
+  return sendResponse(res, status.OK, 'Session closed', session);
 });
 
 export const getUnreadCount = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromRequest(req);
-  const count = await getUnreadMessageCount(userId);
+
+  const count = await prisma.chatMessage.count({
+    where: {
+      userId: { not: userId },
+      isRead: false,
+      isActive: true,
+      session: {
+        userId,
+        status: 'OPEN',
+      },
+    },
+  });
+
   return sendResponse(res, status.OK, 'Unread count retrieved', { count });
 });
-
 

@@ -10,4 +10,3 @@ router.use('/chat', chatRoutes);
 router.use('/admin', adminRoutes);
 
 export default router;
-

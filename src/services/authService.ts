@@ -138,13 +138,13 @@ export const passwordAuth = async (email: string, password: string) => {
     throw new ApiError(status.NOT_FOUND, 'User not found', ERROR_CODES.USER_NOT_FOUND);
   }
 
-  if (!user.password) {
-    throw new ApiError(status.BAD_REQUEST, 'Password authentication not enabled for this account', ERROR_CODES.PASSWORD_AUTH_DISABLED);
-  }
-
+    if (!user.password) {
+      throw new ApiError(status.BAD_REQUEST, 'Password authentication not enabled for this account', ERROR_CODES.PASSWORD_AUTH_DISABLED);
+    }
+    
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    throw new ApiError(status.BAD_REQUEST, 'Invalid password', ERROR_CODES.INVALID_PASSWORD);
+      throw new ApiError(status.BAD_REQUEST, 'Invalid password', ERROR_CODES.INVALID_PASSWORD);
   }
 
   await updateLastLogin(user.id);
@@ -179,14 +179,14 @@ export const registerUser = async (userData: {
 }) => {
   const { firstName, lastName, email, password } = userData;
 
-  if (!email || !password) {
+    if (!email || !password) {
     throw new ApiError(status.BAD_REQUEST, 'Email and password are required', ERROR_CODES.VALIDATION_ERROR);
   }
 
   // Check if user already exists
   const { user: existingUser } = await findUserByEmail(email);
-  if (existingUser) {
-    throw new ApiError(status.BAD_REQUEST, 'User with this email already exists', ERROR_CODES.EMAIL_ALREADY_EXISTS);
+    if (existingUser) {
+      throw new ApiError(status.BAD_REQUEST, 'User with this email already exists', ERROR_CODES.EMAIL_ALREADY_EXISTS);
   }
 
   // Hash password
@@ -224,7 +224,7 @@ export const registerUser = async (userData: {
  */
 export const refreshToken = async (refreshToken: string) => {
   const decoded = jwt.verify(refreshToken, config.jwt.secret) as any;
-
+  
   if (decoded.type !== 'refresh') {
     throw new ApiError(status.BAD_REQUEST, 'Invalid refresh token', ERROR_CODES.INVALID_REFRESH_TOKEN);
   }

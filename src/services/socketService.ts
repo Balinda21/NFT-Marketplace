@@ -18,9 +18,12 @@ let io: SocketServer | null = null;
  * Initialize Socket.io server
  */
 export const initializeSocket = (httpServer: HttpServer): SocketServer => {
+  // Handle multiple frontend URLs (comma-separated)
+  const allowedOrigins = config.frontend_url.split(',').map(url => url.trim());
+  
   io = new SocketServer(httpServer, {
     cors: {
-      origin: config.frontend_url,
+      origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
       methods: ['GET', 'POST'],
       credentials: true,
     },
@@ -146,12 +149,12 @@ export const initializeSocket = (httpServer: HttpServer): SocketServer => {
     });
 
     // Send a message
-    socket.on('send-message', async (data: { sessionId: string; message: string }) => {
+    socket.on('send-message', async (data: { sessionId: string; message: string; imageUrl?: string }) => {
       try {
-        const { sessionId, message } = data;
+        const { sessionId, message, imageUrl } = data;
 
-        if (!message || !message.trim()) {
-          socket.emit('error', { message: 'Message cannot be empty' });
+        if ((!message || !message.trim()) && !imageUrl) {
+          socket.emit('error', { message: 'Message or image is required' });
           return;
         }
 
@@ -162,7 +165,7 @@ export const initializeSocket = (httpServer: HttpServer): SocketServer => {
             : ChatMessageSenderType.USER;
 
         // Send message via service
-        const chatMessage = await sendMessage(sessionId, userId, message.trim(), senderType);
+        const chatMessage = await sendMessage(sessionId, userId, message?.trim() || '', senderType, imageUrl);
 
         // Emit to all participants in the session
         io!.to(`session:${sessionId}`).emit('new-message', {

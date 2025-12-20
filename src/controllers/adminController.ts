@@ -129,4 +129,3 @@ export const getReferralStatistics = catchAsync(async (req: Request, res: Respon
   const stats = await getReferralStats();
   return sendResponse(res, status.OK, 'Referral statistics retrieved', stats);
 });
-

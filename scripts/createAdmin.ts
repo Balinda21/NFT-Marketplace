@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../src/config/prisma';
 import { UserRole } from '@prisma/client';
 
-const ADMIN_EMAIL = 'balindamaurice@gmail.com';
+const ADMIN_EMAIL = 'balindamoris@gmail.com';
 const ADMIN_PASSWORD = 'Balinda@123';
 
 async function createAdmin() {
