@@ -207,20 +207,47 @@ export const getAllSessions = catchAsync(async (req: Request, res: Response) => 
 export const getMessages = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromRequest(req);
   const { sessionId } = req.params;
+  
+  // Validate sessionId is a valid UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(sessionId)) {
+    return sendResponse(res, status.BAD_REQUEST, 'Invalid session ID format', null);
+  }
+
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 50;
   const skip = (page - 1) * limit;
 
-  // Verify user has access to this session
+  // Get user role to check admin access
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!user) {
+    return sendResponse(res, status.NOT_FOUND, 'User not found', null);
+  }
+
+  // Build access check: user owns session OR is assigned admin OR is an admin
+  const whereClause: any = {
+    id: sessionId,
+    isActive: true,
+  };
+
+  // If user is admin, they can access any session
+  if (user.role === UserRole.ADMIN) {
+    // Admin can access any session, no additional where conditions needed
+  } else {
+    // Regular users can only access their own sessions or sessions where they're assigned as admin
+    whereClause.OR = [
+      { userId }, // User is the owner
+      { adminId: userId }, // User is the assigned admin
+    ];
+  }
+
+  // Verify session exists and user has access
   const session = await prisma.chatSession.findFirst({
-    where: {
-      id: sessionId,
-      OR: [
-        { userId }, // User is the owner
-        { adminId: userId }, // User is the assigned admin
-      ],
-      isActive: true,
-    },
+    where: whereClause,
   });
 
   if (!session) {
