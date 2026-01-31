@@ -371,6 +371,20 @@ export const updateUser = async (
     },
   });
 
+  // Emit real-time balance update if balance was changed
+  if (data.accountBalance !== undefined) {
+    try {
+      const { getIO } = await import('./socketService');
+      const io = getIO();
+      io.to(`user:${userId}`).emit('balance-updated', {
+        userId,
+        accountBalance: user.accountBalance,
+      });
+    } catch (error) {
+      // Socket may not be initialized in some contexts, ignore
+    }
+  }
+
   return user;
 };
 
