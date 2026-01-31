@@ -145,6 +145,9 @@ router.get('/users/:userId', getUserDetail);
  *                 type: boolean
  *               isVerified:
  *                 type: boolean
+ *               accountBalance:
+ *                 type: number
+ *                 description: User's account balance (admin can modify)
  *     responses:
  *       200:
  *         description: User updated
@@ -377,3 +380,4 @@ router.post('/loans/:loanId/reject', rejectLoan);
 router.get('/referrals/stats', getReferralStatistics);
 
 export default router;
+

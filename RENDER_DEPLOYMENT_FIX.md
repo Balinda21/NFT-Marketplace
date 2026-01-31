@@ -142,3 +142,4 @@ The main fix was adding the `CMD` instruction to start the Node.js application. 
 - ✅ Has proper file permissions
 
 Your deployment should now work correctly! 🚀
+

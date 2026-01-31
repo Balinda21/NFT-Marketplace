@@ -352,6 +352,7 @@ export const updateUser = async (
     role?: string;
     isActive?: boolean;
     isVerified?: boolean;
+    accountBalance?: number;
   }
 ) => {
   const user = await prisma.user.update({
@@ -365,6 +366,7 @@ export const updateUser = async (
       role: true,
       isActive: true,
       isVerified: true,
+      accountBalance: true,
       updatedAt: true,
     },
   });

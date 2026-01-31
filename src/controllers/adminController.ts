@@ -48,13 +48,14 @@ export const getUserDetail = catchAsync(async (req: Request, res: Response) => {
 
 export const updateUserHandler = catchAsync(async (req: Request, res: Response) => {
   const { userId } = req.params;
-  const { firstName, lastName, role, isActive, isVerified } = req.body;
+  const { firstName, lastName, role, isActive, isVerified, accountBalance } = req.body;
   const user = await updateUser(userId, {
     firstName,
     lastName,
     role,
     isActive,
     isVerified,
+    accountBalance,
   });
   return sendResponse(res, status.OK, 'User updated', user);
 });

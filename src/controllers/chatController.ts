@@ -207,21 +207,10 @@ export const getAllSessions = catchAsync(async (req: Request, res: Response) => 
 export const getMessages = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromRequest(req);
   const { sessionId } = req.params;
-  
-  // Debug logging
-  console.log('[getMessages] Request received:', {
-    sessionId,
-    userId,
-    query: req.query,
-    method: req.method,
-    path: req.path,
-    originalUrl: req.originalUrl,
-  });
-  
+
   // Validate sessionId is a valid UUID
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(sessionId)) {
-    console.log('[getMessages] Invalid session ID format:', sessionId);
     return sendResponse(res, status.BAD_REQUEST, 'Invalid session ID format', null);
   }
 

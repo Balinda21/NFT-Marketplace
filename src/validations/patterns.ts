@@ -19,3 +19,4 @@ export const commonSchemas = {
     'string.max': 'Last name cannot exceed 50 characters',
   }),
 };
+
