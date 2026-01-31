@@ -117,9 +117,19 @@ app.get('/api-docs/swagger.json', (req, res) => {
   res.json(swaggerSpecWithServer);
 });
 
-// Health check
+// Health check - root
 app.get('/', (req, res) => {
   return sendResponse(res, httpStatus.OK, 'Welcome to NFT Marketplace Backend API');
+});
+
+// Health check - for Render and other platforms
+app.get('/api/health', (req, res) => {
+  return sendResponse(res, httpStatus.OK, 'OK', {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: config.env,
+  });
 });
 
 // API routes

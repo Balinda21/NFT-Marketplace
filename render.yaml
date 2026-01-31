@@ -1,0 +1,53 @@
+# Render Blueprint for NFT Marketplace Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: nft-marketplace-backend
+    runtime: node
+    region: oregon # or your preferred region
+    plan: free # Change to 'starter' or higher for production
+    branch: main # Auto-deploy from main branch
+
+    # Build settings
+    buildCommand: npm run build:render
+
+    # Start command
+    startCommand: npm start
+
+    # Health check endpoint
+    healthCheckPath: /api/health
+
+    # Environment variables
+    # These should be configured in Render dashboard for security
+    # The values here are placeholders - set actual values in Render
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false # Set in Render dashboard
+      - key: JWT_SECRET
+        sync: false # Set in Render dashboard
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: SMTP_EMAIL
+        sync: false # Set in Render dashboard
+      - key: SMTP_PASSWORD
+        sync: false # Set in Render dashboard
+      - key: GOOGLE_CLIENT_ID
+        sync: false # Set in Render dashboard
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false # Set in Render dashboard
+      - key: FRONTEND_URL
+        sync: false # Set in Render dashboard
+      - key: TRON_RPC_URL
+        sync: false # Set in Render dashboard
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false # Set in Render dashboard
+      - key: SUPER_ADMIN_LOGIC_CODE
+        sync: false # Set in Render dashboard
+
+    # Auto-deploy settings
+    autoDeploy: true # Automatically deploy when code is pushed to branch

@@ -1,16 +1,21 @@
 {
   "name": "kabisa-new-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "NFT Marketplace Backend API",
   "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon --exec ts-node -r tsconfig-paths/register src/index.ts",
     "build": "npx prisma generate && tsc && tsc-alias",
+    "build:render": "npm install && npx prisma generate && tsc && tsc-alias && npx prisma migrate deploy",
     "deploy": "npx prisma generate && npm run build && docker build . -t ghcr.io/programmerdatch/kabisa-new-backend:latest && docker push ghcr.io/programmerdatch/kabisa-new-backend:latest && ssh urhgserver 'cd /root/apps/programmerdatch/kabisa-new-backend && docker compose pull && docker compose up -d --force-recreate'",
     "db:reset": "npx prisma migrate reset --force",
     "db:push": "npx prisma db push --force-reset",
     "db:migrate": "npx prisma migrate dev",
+    "db:migrate:deploy": "npx prisma migrate deploy",
     "db:create-admin": "IS_SCRIPT=true ts-node -r tsconfig-paths/register scripts/createAdmin.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org kabisa-electric --project web-backend ./dist && sentry-cli sourcemaps upload --org kabisa-electric --project web-backend ./dist"
   },
