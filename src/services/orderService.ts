@@ -13,7 +13,7 @@ interface CreateOptionOrderData {
 }
 
 /**
- * Create an Option order and immediately add profit to user's balance
+ * Create an Option order with ACTIVE status (countdown will run on frontend)
  */
 export const createOptionOrder = async (userId: string, data: CreateOptionOrderData) => {
     const { symbol, amount, duration, ror, entryPrice } = data;
@@ -28,39 +28,99 @@ export const createOptionOrder = async (userId: string, data: CreateOptionOrderD
     }
 
     const currentBalance = parseFloat(user.accountBalance.toString());
-    const orderAmount = amount;
 
-    if (currentBalance < orderAmount) {
+    if (currentBalance < amount) {
         throw new ApiError(status.BAD_REQUEST, 'Insufficient balance', ERROR_CODES.INSUFFICIENT_BALANCE);
     }
 
-    // Calculate profit based on ROR
+    // Calculate expected profit (stored for reference, not added yet)
+    const expectedProfit = (amount * ror) / 100;
+
+    // Create Order with ACTIVE status
+    const order = await prisma.order.create({
+        data: {
+            userId,
+            orderType: OrderType.OPTION,
+            status: OrderStatus.ACTIVE,
+            amount,
+            currency: 'USDT',
+            symbol,
+            entryPrice,
+            periodSeconds: duration,
+            ror,
+            startDate: new Date(),
+            endDate: new Date(Date.now() + duration * 1000),
+            description: `Option order: ${symbol} - ${ror}% ROR for ${duration}s`,
+        },
+    });
+
+    return {
+        status: 'success',
+        message: 'Option order created. Countdown started.',
+        data: {
+            order: {
+                id: order.id,
+                symbol: order.symbol,
+                amount: order.amount,
+                ror,
+                expectedProfit,
+                duration,
+                status: order.status,
+                endDate: order.endDate,
+            },
+        },
+    };
+};
+
+/**
+ * Complete an Option order after countdown finishes - adds profit to balance
+ */
+export const completeOptionOrder = async (userId: string, orderId: string) => {
+    // Get the order
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+    });
+
+    if (!order) {
+        throw new ApiError(status.NOT_FOUND, 'Order not found', ERROR_CODES.ORDER_NOT_FOUND);
+    }
+
+    if (order.userId !== userId) {
+        throw new ApiError(status.FORBIDDEN, 'Not authorized to complete this order', ERROR_CODES.FORBIDDEN);
+    }
+
+    if (order.status !== OrderStatus.ACTIVE) {
+        throw new ApiError(status.BAD_REQUEST, 'Order is not active', ERROR_CODES.ORDER_ALREADY_COMPLETED);
+    }
+
+    // Get user
+    const user = await prisma.user.findUnique({
+        where: { id: userId, isActive: true },
+    });
+
+    if (!user) {
+        throw new ApiError(status.NOT_FOUND, 'User not found', ERROR_CODES.USER_NOT_FOUND);
+    }
+
+    const currentBalance = parseFloat(user.accountBalance.toString());
+    const orderAmount = parseFloat(order.amount.toString());
+    const ror = order.ror ? parseFloat(order.ror.toString()) : 0;
+
+    // Calculate profit
     const profit = (orderAmount * ror) / 100;
     const newBalance = currentBalance + profit;
 
-    // Create the order and update balance in a transaction
+    // Update order and user balance in a transaction
     const result = await prisma.$transaction(async (tx) => {
-        // Create Order record
-        const order = await tx.order.create({
+        const updatedOrder = await tx.order.update({
+            where: { id: orderId },
             data: {
-                userId,
-                orderType: OrderType.OPTION,
                 status: OrderStatus.COMPLETED,
-                amount: orderAmount,
-                currency: 'USDT',
-                symbol,
-                entryPrice,
-                periodSeconds: duration,
-                ror,
-                startDate: new Date(),
-                endDate: new Date(),
                 profit,
                 isWon: true,
-                description: `Option order: ${symbol} - ${ror}% ROR for ${duration}s`,
             },
         });
 
-        // Update user balance
         const updatedUser = await tx.user.update({
             where: { id: userId },
             data: {
@@ -72,12 +132,12 @@ export const createOptionOrder = async (userId: string, data: CreateOptionOrderD
             },
         });
 
-        return { order, updatedUser };
+        return { order: updatedOrder, user: updatedUser };
     });
 
     return {
         status: 'success',
-        message: 'Option order placed successfully. Profit added to balance.',
+        message: 'Option order completed. Profit added to balance.',
         data: {
             order: {
                 id: result.order.id,
@@ -87,7 +147,7 @@ export const createOptionOrder = async (userId: string, data: CreateOptionOrderD
                 profit,
                 status: result.order.status,
             },
-            newBalance: parseFloat(result.updatedUser.accountBalance.toString()),
+            newBalance: parseFloat(result.user.accountBalance.toString()),
         },
     };
 };

@@ -1,18 +1,20 @@
 import { Router } from 'express';
 import {
-  googleLogin,
   passwordLogin,
   register,
   refreshAccessToken,
   getCurrentUser,
+  forgotPassword,
+  resetPasswordHandler,
 } from '@/controllers/authController';
 import validation from '@/middleware/validation';
 import auth from '@/middleware/auth';
 import {
-  googleLoginSchema,
   passwordLoginSchema,
   registerSchema,
   refreshTokenSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from '@/validations/authValidation';
 
 const router = Router();
@@ -114,9 +116,9 @@ router.post('/login/password', validation(passwordLoginSchema), passwordLogin);
 
 /**
  * @swagger
- * /api/auth/login/google:
+ * /api/auth/forgot-password:
  *   post:
- *     summary: Login with Google OAuth token
+ *     summary: Request password reset email
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -124,17 +126,36 @@ router.post('/login/password', validation(passwordLoginSchema), passwordLogin);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - token
+ *             required: [email]
  *             properties:
- *               token:
- *                 type: string
- *                 description: Google ID token
+ *               email: { type: string, format: email }
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: If an account exists, a reset link has been sent
  */
-router.post('/login/google', validation(googleLoginSchema), googleLogin);
+router.post('/forgot-password', validation(forgotPasswordSchema), forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password with token from email
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, newPassword]
+ *             properties:
+ *               token: { type: string }
+ *               newPassword: { type: string, minLength: 8 }
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ */
+router.post('/reset-password', validation(resetPasswordSchema), resetPasswordHandler);
 
 /**
  * @swagger

@@ -1,13 +1,6 @@
 import Joi from 'joi';
 import { commonSchemas } from './patterns';
 
-export const googleLoginSchema = Joi.object({
-  googleToken: Joi.string().required().messages({
-    'string.empty': 'Google token is required',
-    'any.required': 'Google token is required',
-  }),
-});
-
 export const passwordLoginSchema = Joi.object({
   email: commonSchemas.email.required().messages({
     'string.empty': 'Email is required',
@@ -36,5 +29,23 @@ export const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required().messages({
     'string.empty': 'Refresh token is required',
     'any.required': 'Refresh token is required',
+  }),
+});
+
+export const forgotPasswordSchema = Joi.object({
+  email: commonSchemas.email.required().messages({
+    'string.empty': 'Email is required',
+    'any.required': 'Email is required',
+  }),
+});
+
+export const resetPasswordSchema = Joi.object({
+  token: Joi.string().required().messages({
+    'string.empty': 'Reset token is required',
+    'any.required': 'Reset token is required',
+  }),
+  newPassword: commonSchemas.password.required().messages({
+    'string.empty': 'New password is required',
+    'any.required': 'New password is required',
   }),
 });

@@ -1,21 +1,16 @@
 import { Request, Response } from 'express';
 import status from 'http-status';
 import {
-  googleAuth,
   passwordAuth,
   registerUser,
   refreshToken as refreshTokenService,
   getCurrentUser as getCurrentUserService,
+  forgotPassword as forgotPasswordService,
+  resetPassword as resetPasswordService,
 } from '@/services/authService';
 import catchAsync from '@/utils/catchAsync';
 import { sendResponse } from '@/utils/response';
 import { getUserIdFromRequest } from '@/utils/requestUtils';
-
-export const googleLogin = catchAsync(async (req: Request, res: Response) => {
-  const { googleToken } = req.body;
-  const result = await googleAuth(googleToken);
-  return sendResponse(res, status.OK, result.message, result.data);
-});
 
 export const passwordLogin = catchAsync(async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -39,4 +34,16 @@ export const getCurrentUser = catchAsync(async (req: Request, res: Response) => 
   const userId = getUserIdFromRequest(req);
   const result = await getCurrentUserService(userId);
   return sendResponse(res, status.OK, result.message, result.data);
+});
+
+export const forgotPassword = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+  const result = await forgotPasswordService(email);
+  return sendResponse(res, status.OK, result.message);
+});
+
+export const resetPasswordHandler = catchAsync(async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+  const result = await resetPasswordService(token, newPassword);
+  return sendResponse(res, status.OK, result.message);
 });

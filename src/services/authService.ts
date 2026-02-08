@@ -256,6 +256,74 @@ export const refreshToken = async (refreshToken: string) => {
 };
 
 /**
+ * Forgot password - generate reset token
+ */
+export const forgotPassword = async (email: string) => {
+  const { user } = await findUserByEmail(email);
+
+  if (!user) {
+    // Return success even if user not found to prevent email enumeration
+    return {
+      status: 'success',
+      message: 'If an account with that email exists, a reset link has been sent',
+    };
+  }
+
+  // Generate a short-lived reset token (15 minutes)
+  const resetToken = jwt.sign(
+    { userId: user.id, type: 'password_reset' },
+    config.jwt.secret,
+    { expiresIn: '15m' }
+  );
+
+  // Send email
+  const { sendPasswordResetEmail } = await import('./emailService');
+  const resetLink = `${config.frontend_url}/reset-password?token=${resetToken}`;
+  await sendPasswordResetEmail(user.email!, resetLink);
+
+  return {
+    status: 'success',
+    message: 'If an account with that email exists, a reset link has been sent',
+  };
+};
+
+/**
+ * Reset password with token
+ */
+export const resetPassword = async (token: string, newPassword: string) => {
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, config.jwt.secret);
+  } catch {
+    throw new ApiError(status.BAD_REQUEST, 'Invalid or expired reset token', ERROR_CODES.INVALID_RESET_TOKEN);
+  }
+
+  if (decoded.type !== 'password_reset') {
+    throw new ApiError(status.BAD_REQUEST, 'Invalid reset token', ERROR_CODES.INVALID_RESET_TOKEN);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.userId, isActive: true },
+  });
+
+  if (!user) {
+    throw new ApiError(status.NOT_FOUND, 'User not found', ERROR_CODES.USER_NOT_FOUND);
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: hashedPassword },
+  });
+
+  return {
+    status: 'success',
+    message: 'Password reset successfully',
+  };
+};
+
+/**
  * Get current user
  */
 export const getCurrentUser = async (userId: string) => {
