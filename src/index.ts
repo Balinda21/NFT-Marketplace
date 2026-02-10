@@ -27,7 +27,7 @@ runMigrations().then(() => {
   server = app.listen(config.port, () => {
     logger.info(`Server listening on port ${config.port}`);
     logger.info(`API Documentation: http://localhost:${config.port}/api-docs`);
-    logger.info('NFT Marketplace Backend API is running');
+    logger.info('ChainReturns API is running');
 
     // Initialize Socket.io for real-time chat
     initializeSocket(server);

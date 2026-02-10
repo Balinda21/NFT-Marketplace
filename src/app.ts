@@ -88,7 +88,7 @@ app.use('/api-docs', swaggerUi.serve, (req: express.Request, res: express.Respon
   
   return swaggerUi.setup(swaggerSpecWithServer, {
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'NFT Marketplace API Documentation',
+    customSiteTitle: 'ChainReturns API Documentation',
     swaggerOptions: {
       persistAuthorization: true,
       docExpansion: 'none',
@@ -119,7 +119,13 @@ app.get('/api-docs/swagger.json', (req, res) => {
 
 // Health check - root
 app.get('/', (req, res) => {
-  return sendResponse(res, httpStatus.OK, 'Welcome to NFT Marketplace Backend API');
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host') || '';
+  const baseUrl = `${protocol === 'https' ? 'https' : 'http'}://${host}`;
+  return sendResponse(res, httpStatus.OK, 'Welcome to ChainReturns API', {
+    docs: `${baseUrl}/api-docs`,
+    health: `${baseUrl}/api/health`,
+  });
 });
 
 // Health check - for Render and other platforms

@@ -5,15 +5,15 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'NFT Marketplace Backend API',
+      title: 'ChainReturns API',
       version: '1.0.0',
-      description: 'Simple API for NFT marketplace with Google and email/password authentication. Most endpoints require authentication. Use the login/register endpoints to get an access token, then click the Authorize button to enter your token.',
+      description: 'ChainReturns API - Digital asset trading backend. Email/password authentication. Most endpoints require authentication. Use the login/register endpoints to get an access token, then click the Authorize button to enter your token.',
     },
     servers: [
       // In production, use the actual request URL or Render's external URL
       ...(config.env === 'production' 
         ? [{
-            url: process.env.RENDER_EXTERNAL_URL || 'https://your-service-name.onrender.com',
+            url: process.env.RENDER_EXTERNAL_URL || 'https://api.chainreturns.it.com',
             description: 'Production server',
           }]
         : [{
@@ -49,7 +49,11 @@ const options: swaggerJsdoc.Options = {
     tags: [
       {
         name: 'Authentication',
-        description: 'User authentication endpoints',
+        description: 'Login, register, forgot password, refresh token',
+      },
+      {
+        name: 'Orders',
+        description: 'Option trading - create and complete orders',
       },
       {
         name: 'Chat',
