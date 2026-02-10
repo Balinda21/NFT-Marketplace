@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chainreturns-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-ghostdb}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-StrongPassword123}
+      POSTGRES_DB: ${DB_NAME:-chainReturns}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ghostdb} -d ${DB_NAME:-chainReturns}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chainreturns-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-ghostdb}:${DB_PASSWORD:-StrongPassword123}@postgres:5432/${DB_NAME:-chainReturns}
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: chainreturns-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+
+  certbot:
+    image: certbot/certbot
+    container_name: chainreturns-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+
+volumes:
+  postgres_data:
