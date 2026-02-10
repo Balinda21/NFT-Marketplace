@@ -138,6 +138,23 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// GET /api - API info (must be before app.use so it matches exactly)
+app.get('/api', (req, res) => {
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host') || '';
+  const baseUrl = `${protocol === 'https' ? 'https' : 'http'}://${host}`;
+  return sendResponse(res, httpStatus.OK, 'ChainReturns API', {
+    endpoints: {
+      auth: `${baseUrl}/api/auth`,
+      orders: `${baseUrl}/api/orders`,
+      chat: `${baseUrl}/api/chat`,
+      admin: `${baseUrl}/api/admin`,
+      docs: `${baseUrl}/api-docs`,
+      health: `${baseUrl}/api/health`,
+    },
+  });
+});
+
 // API routes
 app.use('/api', routes);
 
