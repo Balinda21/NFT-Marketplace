@@ -12,6 +12,10 @@ import {
   getAllLoans,
   updateLoanStatus,
   getReferralStats,
+  getNotifications,
+  getUnreadNotificationCount,
+  markNotificationRead,
+  markAllNotificationsRead,
 } from '@/services/adminService';
 import catchAsync from '@/utils/catchAsync';
 import { sendResponse } from '@/utils/response';
@@ -129,4 +133,31 @@ export const rejectLoan = catchAsync(async (req: Request, res: Response) => {
 export const getReferralStatistics = catchAsync(async (req: Request, res: Response) => {
   const stats = await getReferralStats();
   return sendResponse(res, status.OK, 'Referral statistics retrieved', stats);
+});
+
+// ======= NOTIFICATIONS =======
+
+export const getNotificationList = catchAsync(async (req: Request, res: Response) => {
+  const filters = {
+    page: parseInt(req.query.page as string) || 1,
+    limit: parseInt(req.query.limit as string) || 50,
+  };
+  const result = await getNotifications(filters);
+  return sendResponse(res, status.OK, 'Notifications retrieved', result);
+});
+
+export const getNotificationCount = catchAsync(async (_req: Request, res: Response) => {
+  const result = await getUnreadNotificationCount();
+  return sendResponse(res, status.OK, 'Unread notification count retrieved', result);
+});
+
+export const readNotification = catchAsync(async (req: Request, res: Response) => {
+  const { notificationId } = req.params;
+  const notification = await markNotificationRead(notificationId);
+  return sendResponse(res, status.OK, 'Notification marked as read', notification);
+});
+
+export const readAllNotifications = catchAsync(async (_req: Request, res: Response) => {
+  const result = await markAllNotificationsRead();
+  return sendResponse(res, status.OK, 'All notifications marked as read', result);
 });

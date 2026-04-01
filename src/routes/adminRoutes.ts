@@ -14,6 +14,10 @@ import {
   approveLoan,
   rejectLoan,
   getReferralStatistics,
+  getNotificationList,
+  getNotificationCount,
+  readNotification,
+  readAllNotifications,
 } from '@/controllers/adminController';
 import auth from '@/middleware/auth';
 import { UserRole } from '@prisma/client';
@@ -378,6 +382,80 @@ router.post('/loans/:loanId/reject', rejectLoan);
  *         description: Referral statistics
  */
 router.get('/referrals/stats', getReferralStatistics);
+
+/**
+ * @swagger
+ * /api/admin/notifications:
+ *   get:
+ *     summary: Get all admin notifications (admin only)
+ *     description: Returns paginated notifications plus total unread count for the bell badge.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: number
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: number
+ *           default: 50
+ *     responses:
+ *       200:
+ *         description: Notifications list with unread count
+ */
+router.get('/notifications', getNotificationList);
+
+/**
+ * @swagger
+ * /api/admin/notifications/unread-count:
+ *   get:
+ *     summary: Get unread notification count (for bell badge)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Unread count
+ */
+router.get('/notifications/unread-count', getNotificationCount);
+
+/**
+ * @swagger
+ * /api/admin/notifications/read-all:
+ *   post:
+ *     summary: Mark all notifications as read
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All notifications marked as read
+ */
+router.post('/notifications/read-all', readAllNotifications);
+
+/**
+ * @swagger
+ * /api/admin/notifications/{notificationId}/read:
+ *   post:
+ *     summary: Mark a single notification as read
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: notificationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Notification marked as read
+ */
+router.post('/notifications/:notificationId/read', readNotification);
 
 export default router;
 

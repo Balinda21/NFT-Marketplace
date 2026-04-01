@@ -4,6 +4,77 @@ import ApiError from '@/utils/ApiError';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import status from 'http-status';
 
+// ======= NOTIFICATIONS =======
+
+/**
+ * Get notifications for admin (most recent first) with unread count
+ */
+export const getNotifications = async (filters: { page?: number; limit?: number }) => {
+  const { page = 1, limit = 50 } = filters;
+  const skip = (page - 1) * limit;
+
+  const [notifications, total, unreadCount] = await Promise.all([
+    prisma.notification.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.notification.count({ where: { isActive: true } }),
+    prisma.notification.count({ where: { isActive: true, isRead: false } }),
+  ]);
+
+  return {
+    notifications,
+    unreadCount,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+/**
+ * Get unread notification count (for bell badge)
+ */
+export const getUnreadNotificationCount = async () => {
+  const count = await prisma.notification.count({
+    where: { isActive: true, isRead: false },
+  });
+  return { count };
+};
+
+/**
+ * Mark a single notification as read
+ */
+export const markNotificationRead = async (notificationId: string) => {
+  const notification = await prisma.notification.findFirst({
+    where: { id: notificationId, isActive: true },
+  });
+
+  if (!notification) {
+    throw new ApiError(status.NOT_FOUND, 'Notification not found', ERROR_CODES.NOT_FOUND);
+  }
+
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { isRead: true, readAt: new Date() },
+  });
+};
+
+/**
+ * Mark all notifications as read
+ */
+export const markAllNotificationsRead = async () => {
+  const result = await prisma.notification.updateMany({
+    where: { isActive: true, isRead: false },
+    data: { isRead: true, readAt: new Date() },
+  });
+  return { updated: result.count };
+};
+
 /**
  * Get dashboard statistics
  */

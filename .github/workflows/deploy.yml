@@ -1,0 +1,48 @@
+name: Deploy to Hostinger VPS
+
+# Triggers on every push to main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.WORK_DIR }}
+
+            echo ">>> Pulling latest code..."
+            git pull origin main
+
+            echo ">>> Installing dependencies..."
+            npm install --production=false
+
+            echo ">>> Building TypeScript..."
+            npm run build
+
+            echo ">>> Running database migrations..."
+            npx prisma migrate deploy
+
+            echo ">>> Restarting containers..."
+            docker compose up -d --build --force-recreate api
+
+            echo ">>> Done! Deployment complete."
+          ENDSSH
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -rf ~/.ssh
