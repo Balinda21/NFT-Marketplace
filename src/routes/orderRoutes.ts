@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createOptionOrder, completeOptionOrder } from '@/controllers/orderController';
+import { createOptionOrder, completeOptionOrder, getActiveOrder } from '@/controllers/orderController';
 import validation from '@/middleware/validation';
 import auth from '@/middleware/auth';
 import { createOptionOrderSchema } from '@/validations/orderValidation';
@@ -41,6 +41,7 @@ const router = Router();
  *       200:
  *         description: Option order created with ACTIVE status
  */
+router.get('/active', auth(), getActiveOrder);
 router.post('/option', auth(), validation(createOptionOrderSchema), createOptionOrder);
 
 /**

@@ -4,6 +4,7 @@ import ApiError from '@/utils/ApiError';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import status from 'http-status';
 import { isTradeLossMode } from './settingsService';
+import logger from '@/config/logger';
 
 interface CreateOptionOrderData {
     symbol: string;
@@ -128,12 +129,14 @@ export const completeOptionOrder = async (userId: string, orderId: string) => {
     const orderAmount = parseFloat(order.amount.toString());
     const ror = order.ror ? parseFloat(order.ror.toString()) : 0;
 
-    // Check admin trade mode: loss = user loses their stake, profit = user gains ROR
+    // Check admin trade mode
+    // Loss mode: user loses their stake (already deducted on order create, nothing returned)
+    // Profit mode: user gets their stake back + ROR profit
     const lossMode = await isTradeLossMode();
     const profit = lossMode ? 0 : (orderAmount * ror) / 100;
-    // In loss mode balance stays as-is (amount was already deducted on order create)
-    // In profit mode we add the profit on top of already-deducted balance
-    const newBalance = lossMode ? currentBalance : currentBalance + profit;
+    const newBalance = lossMode
+        ? currentBalance                              // stake already gone, no change
+        : currentBalance + orderAmount + profit;      // return stake + add profit
 
     // Update order and user balance in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -189,4 +192,74 @@ export const completeOptionOrder = async (userId: string, orderId: string) => {
             newBalance: finalBalance,
         },
     };
+};
+
+/**
+ * Auto-complete all expired ACTIVE orders (called by scheduler)
+ * This ensures orders are settled even if the user refreshes or disconnects
+ */
+export const autoCompleteExpiredOrders = async () => {
+    const now = new Date();
+
+    // Find all active orders whose countdown has ended
+    const expiredOrders = await prisma.order.findMany({
+        where: {
+            status: OrderStatus.ACTIVE,
+            endDate: { lte: now },
+        },
+        include: { user: true },
+    });
+
+    if (expiredOrders.length === 0) return;
+
+    const lossMode = await isTradeLossMode();
+    logger.info(`Auto-completing ${expiredOrders.length} expired orders (lossMode=${lossMode})`);
+
+    for (const order of expiredOrders) {
+        try {
+            const user = order.user;
+            if (!user || !user.isActive) continue;
+
+            const currentBalance = parseFloat(user.accountBalance.toString());
+            const orderAmount = parseFloat(order.amount.toString());
+            const ror = order.ror ? parseFloat(order.ror.toString()) : 0;
+            const profit = lossMode ? 0 : (orderAmount * ror) / 100;
+            const newBalance = lossMode
+                ? currentBalance
+                : currentBalance + orderAmount + profit;
+
+            await prisma.$transaction(async (tx) => {
+                await tx.order.update({
+                    where: { id: order.id },
+                    data: { status: OrderStatus.COMPLETED, profit, isWon: !lossMode },
+                });
+                await tx.user.update({
+                    where: { id: user.id },
+                    data: { accountBalance: newBalance },
+                });
+            });
+
+            // Notify user via socket
+            try {
+                const { getIO } = await import('./socketService');
+                const io = getIO();
+                io.to(`user:${user.id}`).emit('balance-updated', {
+                    userId: user.id,
+                    accountBalance: newBalance.toString(),
+                });
+                io.to(`user:${user.id}`).emit('order-completed', {
+                    orderId: order.id,
+                    profit,
+                    newBalance,
+                    isWon: !lossMode,
+                });
+            } catch {
+                // Socket not initialized — non-fatal
+            }
+
+            logger.info(`Auto-completed order ${order.id} for user ${user.id} profit=${profit}`);
+        } catch (err) {
+            logger.error(`Failed to auto-complete order ${order.id}:`, err);
+        }
+    }
 };

@@ -4,6 +4,7 @@ import app from './app';
 import config from './config/config';
 import logger from './config/logger';
 import { initializeSocket } from './services/socketService';
+import { autoCompleteExpiredOrders } from './services/orderService';
 import { execSync } from 'child_process';
 
 let server: Server;
@@ -32,6 +33,12 @@ runMigrations().then(() => {
     // Initialize Socket.io for real-time chat
     initializeSocket(server);
     logger.info('Socket.io initialized for real-time chat');
+
+    // Auto-complete expired orders every 10 seconds
+    setInterval(() => {
+      autoCompleteExpiredOrders().catch((err) => logger.error('autoCompleteExpiredOrders error:', err));
+    }, 10000);
+    logger.info('Order auto-completion scheduler started (every 10s)');
   });
 
   server.on('error', (error: NodeJS.ErrnoException) => {

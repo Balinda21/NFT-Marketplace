@@ -4,6 +4,8 @@ import {
     createOptionOrder as createOptionOrderService,
     completeOptionOrder as completeOptionOrderService,
 } from '@/services/orderService';
+import prisma from '@/config/prisma';
+import { OrderStatus } from '@prisma/client';
 import catchAsync from '@/utils/catchAsync';
 import { sendResponse } from '@/utils/response';
 import { getUserIdFromRequest } from '@/utils/requestUtils';
@@ -30,4 +32,15 @@ export const completeOptionOrder = catchAsync(async (req: Request, res: Response
     const result = await completeOptionOrderService(userId, orderId);
 
     return sendResponse(res, status.OK, result.message, result.data);
+});
+
+export const getActiveOrder = catchAsync(async (req: Request, res: Response) => {
+    const userId = getUserIdFromRequest(req);
+
+    const order = await prisma.order.findFirst({
+        where: { userId, status: OrderStatus.ACTIVE },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    return sendResponse(res, status.OK, 'Active order', { order });
 });
