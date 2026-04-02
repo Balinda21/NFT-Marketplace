@@ -10,11 +10,8 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://ghostdb:chainPassword123@172.18.0.1:5432/chainReturns
-    ports:
-      - "127.0.0.1:9090:9090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      DATABASE_URL: postgresql://ghostdb:chainPassword123@localhost:5432/chainReturns
+    network_mode: host
 
   nginx:
     image: nginx:alpine
@@ -28,8 +25,6 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
-    depends_on:
-      - api
 
   certbot:
     image: certbot/certbot
