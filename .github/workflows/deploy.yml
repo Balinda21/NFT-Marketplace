@@ -37,8 +37,15 @@ jobs:
             echo ">>> Running database migrations..."
             npx prisma migrate deploy
 
+            echo ">>> Stopping any existing api container..."
+            docker compose stop api || true
+            docker compose rm -f api || true
+
+            echo ">>> Freeing port 9090 if in use..."
+            fuser -k 9090/tcp || true
+
             echo ">>> Restarting containers..."
-            docker compose up -d --build --force-recreate --no-deps api
+            docker compose up -d --build --no-deps api
 
             echo ">>> Done! Deployment complete."
           ENDSSH
