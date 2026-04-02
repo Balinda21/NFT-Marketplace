@@ -38,22 +38,9 @@ jobs:
             echo ">>> Running database migrations..."
             npx prisma migrate deploy
 
-            echo ">>> Stopping any existing api container..."
-            docker compose stop api || true
-            docker compose rm -f api || true
-
-            echo ">>> Force-freeing ports..."
-            for PORT in 9090 80 443; do
-              PID=$(lsof -ti:$PORT 2>/dev/null || true)
-              if [ -n "$PID" ]; then kill -9 $PID 2>/dev/null || true; fi
-            done
-            sleep 2
-
-            echo ">>> Pruning corrupted Docker build cache..."
-            docker builder prune -f
-
-            echo ">>> Restarting containers..."
-            docker compose up -d --build
+            echo ">>> Restarting PM2..."
+            pm2 restart chainreturns-api || pm2 start "npm run start" --name chainreturns-api
+            pm2 save
 
             echo ">>> Done! Deployment complete."
           ENDSSH
