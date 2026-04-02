@@ -43,6 +43,10 @@ jobs:
 
             echo ">>> Freeing port 9090 if in use..."
             fuser -k 9090/tcp || true
+            # Kill any other Docker container holding port 9090
+            CONTAINER=$(docker ps --format '{{.ID}}' --filter "publish=9090" 2>/dev/null || true)
+            if [ -n "$CONTAINER" ]; then docker stop $CONTAINER && docker rm -f $CONTAINER; fi
+            sleep 2
 
             echo ">>> Pruning corrupted Docker build cache..."
             docker builder prune -f
