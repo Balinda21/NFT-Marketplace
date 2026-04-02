@@ -26,7 +26,8 @@ jobs:
             cd ${{ secrets.WORK_DIR }}
 
             echo ">>> Pulling latest code..."
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             echo ">>> Installing dependencies..."
             npm install --production=false
