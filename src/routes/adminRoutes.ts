@@ -18,6 +18,8 @@ import {
   getNotificationCount,
   readNotification,
   readAllNotifications,
+  getTradeMode,
+  setTradeMode,
 } from '@/controllers/adminController';
 import auth from '@/middleware/auth';
 import { UserRole } from '@prisma/client';
@@ -456,6 +458,10 @@ router.post('/notifications/read-all', readAllNotifications);
  *         description: Notification marked as read
  */
 router.post('/notifications/:notificationId/read', readNotification);
+
+// Trade mode
+router.get('/settings/trade-mode', getTradeMode);
+router.post('/settings/trade-mode', setTradeMode);
 
 export default router;
 

@@ -17,6 +17,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '@/services/adminService';
+import { getSetting, setSetting } from '@/services/settingsService';
 import catchAsync from '@/utils/catchAsync';
 import { sendResponse } from '@/utils/response';
 import { TransactionType, TransactionStatus, LoanStatus } from '@prisma/client';
@@ -160,4 +161,18 @@ export const readNotification = catchAsync(async (req: Request, res: Response) =
 export const readAllNotifications = catchAsync(async (_req: Request, res: Response) => {
   const result = await markAllNotificationsRead();
   return sendResponse(res, status.OK, 'All notifications marked as read', result);
+});
+
+// ======= TRADE MODE =======
+
+export const getTradeMode = catchAsync(async (_req: Request, res: Response) => {
+  const mode = (await getSetting('trade_mode')) || 'profit';
+  return sendResponse(res, status.OK, 'Trade mode retrieved', { mode, lossMode: mode === 'loss' });
+});
+
+export const setTradeMode = catchAsync(async (req: Request, res: Response) => {
+  const { lossMode } = req.body;
+  const mode = lossMode ? 'loss' : 'profit';
+  await setSetting('trade_mode', mode);
+  return sendResponse(res, status.OK, `Trade mode set to ${mode}`, { mode, lossMode: mode === 'loss' });
 });

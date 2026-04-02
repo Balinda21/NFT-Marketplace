@@ -3,6 +3,7 @@ import { OrderType, OrderStatus } from '@prisma/client';
 import ApiError from '@/utils/ApiError';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import status from 'http-status';
+import { isTradeLossMode } from './settingsService';
 
 interface CreateOptionOrderData {
     symbol: string;
@@ -127,9 +128,12 @@ export const completeOptionOrder = async (userId: string, orderId: string) => {
     const orderAmount = parseFloat(order.amount.toString());
     const ror = order.ror ? parseFloat(order.ror.toString()) : 0;
 
-    // Calculate profit
-    const profit = (orderAmount * ror) / 100;
-    const newBalance = currentBalance + profit;
+    // Check admin trade mode: loss = user loses their stake, profit = user gains ROR
+    const lossMode = await isTradeLossMode();
+    const profit = lossMode ? 0 : (orderAmount * ror) / 100;
+    // In loss mode balance stays as-is (amount was already deducted on order create)
+    // In profit mode we add the profit on top of already-deducted balance
+    const newBalance = lossMode ? currentBalance : currentBalance + profit;
 
     // Update order and user balance in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -138,7 +142,7 @@ export const completeOptionOrder = async (userId: string, orderId: string) => {
             data: {
                 status: OrderStatus.COMPLETED,
                 profit,
-                isWon: true,
+                isWon: !lossMode,
             },
         });
 

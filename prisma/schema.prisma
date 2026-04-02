@@ -457,3 +457,9 @@ model MarketData {
   @@index([category])
   @@index([isActive])
 }
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
