@@ -1,22 +1,6 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: chainreturns-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER:-ghostdb}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-StrongPassword123}
-      POSTGRES_DB: ${DB_NAME:-chainReturns}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ghostdb} -d ${DB_NAME:-chainReturns}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   api:
     build:
       context: .
@@ -26,12 +10,11 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-ghostdb}:${DB_PASSWORD:-StrongPassword123}@postgres:5432/${DB_NAME:-chainReturns}
+      DATABASE_URL: postgresql://ghostdb:chainPassword123@172.18.0.1:5432/chainReturns
     ports:
       - "127.0.0.1:9090:9090"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   nginx:
     image: nginx:alpine
@@ -54,6 +37,3 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-
-volumes:
-  postgres_data:
