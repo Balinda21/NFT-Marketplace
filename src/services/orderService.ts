@@ -36,23 +36,44 @@ export const createOptionOrder = async (userId: string, data: CreateOptionOrderD
     // Calculate expected profit (stored for reference, not added yet)
     const expectedProfit = (amount * ror) / 100;
 
-    // Create Order with ACTIVE status
-    const order = await prisma.order.create({
-        data: {
+    // Deduct amount from balance and create order atomically
+    const newBalance = currentBalance - amount;
+
+    const [updatedUser, order] = await prisma.$transaction([
+        prisma.user.update({
+            where: { id: userId },
+            data: { accountBalance: newBalance },
+            select: { id: true, accountBalance: true },
+        }),
+        prisma.order.create({
+            data: {
+                userId,
+                orderType: OrderType.OPTION,
+                status: OrderStatus.ACTIVE,
+                amount,
+                currency: 'USDT',
+                symbol,
+                entryPrice,
+                periodSeconds: duration,
+                ror,
+                startDate: new Date(),
+                endDate: new Date(Date.now() + duration * 1000),
+                description: `Option order: ${symbol} - ${ror}% ROR for ${duration}s`,
+            },
+        }),
+    ]);
+
+    // Emit real-time balance update to the user
+    try {
+        const { getIO } = await import('./socketService');
+        const io = getIO();
+        io.to(`user:${userId}`).emit('balance-updated', {
             userId,
-            orderType: OrderType.OPTION,
-            status: OrderStatus.ACTIVE,
-            amount,
-            currency: 'USDT',
-            symbol,
-            entryPrice,
-            periodSeconds: duration,
-            ror,
-            startDate: new Date(),
-            endDate: new Date(Date.now() + duration * 1000),
-            description: `Option order: ${symbol} - ${ror}% ROR for ${duration}s`,
-        },
-    });
+            accountBalance: updatedUser.accountBalance.toString(),
+        });
+    } catch {
+        // Socket not initialized — non-fatal
+    }
 
     return {
         status: 'success',
@@ -135,6 +156,20 @@ export const completeOptionOrder = async (userId: string, orderId: string) => {
         return { order: updatedOrder, user: updatedUser };
     });
 
+    const finalBalance = parseFloat(result.user.accountBalance.toString());
+
+    // Emit real-time balance update to the user
+    try {
+        const { getIO } = await import('./socketService');
+        const io = getIO();
+        io.to(`user:${userId}`).emit('balance-updated', {
+            userId,
+            accountBalance: result.user.accountBalance.toString(),
+        });
+    } catch {
+        // Socket not initialized — non-fatal
+    }
+
     return {
         status: 'success',
         message: 'Option order completed. Profit added to balance.',
@@ -147,7 +182,7 @@ export const completeOptionOrder = async (userId: string, orderId: string) => {
                 profit,
                 status: result.order.status,
             },
-            newBalance: parseFloat(result.user.accountBalance.toString()),
+            newBalance: finalBalance,
         },
     };
 };
