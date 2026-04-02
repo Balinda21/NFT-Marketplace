@@ -42,13 +42,12 @@ jobs:
             docker compose rm -f api || true
 
             echo ">>> Force-freeing port 9090..."
-            # Kill OS-level process holding the port
-            kill -9 $(lsof -ti:9090) 2>/dev/null || true
+            # Kill any OS/PM2 process holding the port
+            PID=$(lsof -ti:9090 2>/dev/null || true)
+            if [ -n "$PID" ]; then kill -9 $PID; fi
             fuser -k 9090/tcp 2>/dev/null || true
-            # Stop every running Docker container (in case one still holds 9090)
-            docker stop $(docker ps -q) 2>/dev/null || true
             docker rm -f $(docker ps -aq --filter "name=chainreturns-api") 2>/dev/null || true
-            sleep 3
+            sleep 2
 
             echo ">>> Pruning corrupted Docker build cache..."
             docker builder prune -f
